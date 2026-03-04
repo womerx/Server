@@ -33,7 +33,8 @@ function getLobbiesPublic() {
     id: l.id,
     name: l.name,
     playerCount: Object.keys(l.players).length,
-    started: l.started
+    started: l.started,
+    isPrivate: !!l.isPrivate
   }));
 }
 
@@ -65,8 +66,12 @@ io.on('connection', (socket) => {
     socket.emit('lobbiesList', getLobbiesPublic());
   });
 
-  socket.on('createLobby', ({ lobbyName, playerName, playerColor }) => {
+  socket.on('createLobby', ({ lobbyName, playerName, playerColor, password, isPrivate }) => {
     const lobbyId = createLobby(lobbyName, playerName, playerColor);
+    if (isPrivate && password) {
+      lobbies[lobbyId].isPrivate = true;
+      lobbies[lobbyId].password = password;
+    }
     const player = {
       id: socket.id,
       name: playerName,
@@ -85,10 +90,13 @@ io.on('connection', (socket) => {
     io.emit('lobbiesList', getLobbiesPublic());
   });
 
-  socket.on('joinLobby', ({ lobbyId, playerName, playerColor }) => {
+  socket.on('joinLobby', ({ lobbyId, playerName, playerColor, password }) => {
     const lobby = lobbies[lobbyId];
     if (!lobby) { socket.emit('error', 'Lobby not found'); return; }
     if (lobby.started) { socket.emit('error', 'Game already started'); return; }
+    if (lobby.isPrivate && lobby.password && lobby.password !== password) {
+      socket.emit('error', 'Wrong password!'); return;
+    }
     const player = {
       id: socket.id,
       name: playerName,
