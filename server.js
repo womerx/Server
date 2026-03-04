@@ -159,6 +159,21 @@ io.on('connection', (socket) => {
     console.log(`Tag! ${tagger.name} tagged ${target.name}`);
   });
 
+  socket.on('chatMessage', ({ lobbyId, text }) => {
+    const lobby = lobbies[lobbyId];
+    if (!lobby) return;
+    const player = lobby.players[socket.id];
+    if (!player) return;
+    const clean = String(text).slice(0, 120).trim();
+    if (!clean) return;
+    io.to(lobbyId).emit('chatMessage', {
+      name: player.name,
+      color: player.color,
+      text: clean,
+      time: Date.now()
+    });
+  });
+
   socket.on('leaveLobby', () => {
     handleLeave(socket);
   });
